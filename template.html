@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>jstr</title>
+  <!-- <link rel="stylesheet" href="https://newcss.net/new.min.css"> -->
+  <link rel="stylesheet" href="lite.css">
+  <!-- <link rel="stylesheet" href="soupalt.css"> -->
+  <!-- <link rel="stylesheet" href="theme.css"> -->
+  <!-- <link rel="stylesheet" href="alt.css" contenteditable style="display: block;"> -->
+  <link rel="icon" href="media/fuckylogo.png">
+</head>
+
+<body>
+  <header>
+    <h1 style="margin-right: 1rem">Jordan Streete</h1>
+    <nav>
+      <a href="/">Home</a>
+      |
+      <a href="/posts.html">Posts</a>
+      |
+      <a href="/projects.html">Projects</a>
+      |
+      <a href="https://github.com/BoundlessCarrot" target="_blank">Github</a>
+      |
+      <div class="dropdown">
+            <a href="#">More ▼</a>
+            <div class="dropdown-content">
+                <a href="/resources.html">Cool Sh*t</a>
+            </div>
+        </div>
+      </nav>
+      <script>
+        document.querySelector('.dropdown > a').addEventListener('click', function(e) {
+            e.preventDefault();
+            var dropdownContent = this.nextElementSibling;
+            if (dropdownContent.style.display === 'block') {
+                dropdownContent.style.display = 'none';
+            } else {
+                dropdownContent.style.display = 'block';
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            var dropdown = document.querySelector('.dropdown');
+            var dropdownContent = dropdown.querySelector('.dropdown-content');
+            if (!dropdown.contains(e.target)) {
+                dropdownContent.style.display = 'none';
+            }
+        });
+    </script>
+  </header>
+
+  <main></main> 
+
+  <footer>
+    <details>
+      <summary>My social media</summary>
+      <div style="text-align: center;">
+        <a href="https://www.instagram.com/jjstreete/" target="_blank">Instagram</a>
+        |
+        <a href="https://www.linkedin.com/in/jordan-streete-0b8b3711a/" target="_blank">LinkedIn</a>
+        |
+        <a href="https://steamcommunity.com/id/jordanstr/" target="_blank">Steam</a>
+        |
+        <a href="https://osu.ppy.sh/users/4713647" target="_blank">osu!</a>
+        |
+        <a href="https://www.goodreads.com/user/show/121986804-jordan" target="_blank">Goodreads</a>
+        |
+        <a href="https://letterboxd.com/jstr_/" target="_blank">Letterboxd</a>
+        |
+        <a href="https://gitlab.com/jstr_" target="_blank">Gitlab</a>
+        |
+        <a href="https://sr.ht/~jstr/" target="_blank">sourcehut</a>
+
+      </div>
+
+      <p style="text-align: center;">
+        <i>
+          You can also email me here:
+          <a href="mailto:jordan.streete@gmail.com">jordan.streete@gmail.com</a>
+        </i>
+      </p>
+    </details>
+  </footer>
+  </body>
+</html>
