@@ -9,6 +9,8 @@ const html = koino.html;
 const serve = zds.zds;
 const ew = std.mem.endsWith;
 const eql = std.mem.eql;
+const ext = std.fs.path.extension;
+// const basename = std.fs.path.basename;
 
 const Settings = struct {
     allocator: std.mem.Allocator,
@@ -16,7 +18,8 @@ const Settings = struct {
     templateBuffer: std.ArrayList(u8),
     excludePaths: std.ArrayList([]const u8),
     insertMarker: ?usize = null,
-    rootDirName: []const u8 = undefined,
+    siteDirPath: []const u8 = undefined,
+    mastersDirPath: []const u8 = undefined,
 
     const Self = @This();
 
@@ -38,7 +41,12 @@ const Settings = struct {
 
         const stat = try templateFile.stat();
 
-        try self.templateBuffer.writer().writeAll(try templateFile.readToEndAlloc(self.allocator, stat.size));
+        // Create a separate variable to hold the allocated buffer
+        const template_contents = try templateFile.readToEndAlloc(self.allocator, stat.size);
+        defer self.allocator.free(template_contents); // Free the memory when we're done
+
+        // Now write the contents to the template buffer
+        try self.templateBuffer.writer().writeAll(template_contents);
 
         // find the file position in the template
         self.insertMarker = std.mem.indexOf(u8, self.templateBuffer.items, "<main>").? + "<main>".len;
@@ -120,18 +128,20 @@ fn isExcludedFile(settings: Settings, filename: []const u8) bool {
         }
     }
     return false;
+    // return std.mem.containsAtLeast([]u8, settings.excludePaths.items, 1, filename);
 }
 
-fn processFileTree(dir: *std.fs.Dir, settings: Settings) !void {
+fn processFileTree(dir: std.fs.Dir, settings: Settings) !void {
     var fileCount: usize = 0;
     var skipCount: usize = 0;
     var walker = try dir.walk(settings.allocator);
+    defer walker.deinit();
     while (try walker.next()) |entry| {
         switch (entry.kind) {
             .file => {
                 // Make sure filename ends in `.md` and isn't on the exclude list
-                if (!ew(u8, entry.name, ".md") or isExcludedFile(settings, entry.name)) {
-                    std.log.info("{s} skipped", .{entry.name});
+                if (!ew(u8, ext(entry.path), ".md") or isExcludedFile(settings, entry.basename)) {
+                    std.log.info("{s} skipped", .{entry.basename});
                     skipCount += 1;
                     continue;
                 }
@@ -142,19 +152,18 @@ fn processFileTree(dir: *std.fs.Dir, settings: Settings) !void {
                 // we want the path within this sub directory as that mirrors the path we want to save the file in
                 // e.g. the file `source/masters/posts/post1.md` should be saved at `rootdir/posts/post1.html`
                 // Get root directory path
-                const savePath = std.fs.path.relative(settings.allocator, settings.rootDirName, entry.path);
-                defer settings.allocator.free(savePath);
-
-                std.debug.print("{s}\n", .{rootPath});
+                const pathToRoot = try std.fs.path.relative(settings.allocator, settings.mastersDirPath, entry.path);
+                defer settings.allocator.free(pathToRoot);
 
                 // Get html filename and combine with path
-                const htmlFilename = try std.fmt.allocPrint(settings.allocator, "{s}.html", .{std.mem.trimRight(u8, entry.name, ".md")});
+                const htmlFilename = try std.fmt.allocPrint(settings.allocator, "{s}{s}.html", .{ settings.siteDirPath, std.fs.path.stem(entry.basename) });
                 defer settings.allocator.free(htmlFilename);
+                std.debug.print("{s}\n", .{htmlFilename});
 
                 var htmlBuffer: []const u8 = undefined;
                 defer settings.allocator.free(htmlBuffer);
 
-                try openAndConvertToHtml(settings, entry.name, &htmlBuffer);
+                try openAndConvertToHtml(settings, entry.basename, &htmlBuffer);
 
                 var finishedFile: []const u8 = undefined;
                 defer settings.allocator.free(finishedFile);
@@ -165,15 +174,15 @@ fn processFileTree(dir: *std.fs.Dir, settings: Settings) !void {
 
                 fileCount += 1;
             },
-            .directory => {
-                var lowerDir = std.fs.cwd().openDir(entry.name, .{ .iterate = true }) catch |err| {
-                    std.log.err("There was an issue opening the {s} directory: {s}", .{ entry.name, @errorName(err) });
-                    continue;
-                };
-                var lowerIter = lowerDir.iterate();
-
-                try processFileTree(&lowerIter, settings);
-            },
+            // .directory => {
+            //     var lowerDir = std.fs.cwd().openDir(entry.basename, .{ .iterate = true }) catch |err| {
+            //         std.log.err("There was an issue opening the {s} directory: {s}", .{ entry.basename, @errorName(err) });
+            //         continue;
+            //     };
+            //     var lowerIter = lowerDir.iterate();
+            //
+            //     try processFileTree(lowerIter, settings);
+            // },
             else => {},
         }
     }
@@ -194,13 +203,15 @@ pub fn main() !void {
     defer settings.deinit();
 
     settings.templatePath = "template.html";
-    settings.rootDirName = ".";
+    settings.siteDirPath = "../../";
+    settings.mastersDirPath = ".";
     try settings.excludePaths.append(settings.templatePath);
+    try settings.excludePaths.append("README.md");
 
     // Open and save the template to a buffer in the settings struct
     try settings.openAndLoadTemplate();
 
-    var inputRoot = std.fs.cwd().openDir(".", .{ .iterate = true }) catch |err| {
+    var inputRoot = std.fs.cwd().openDir(settings.mastersDirPath, .{ .iterate = true }) catch |err| {
         std.log.err("There was an issue opening the root directory: {s}", .{@errorName(err)});
         return;
     };

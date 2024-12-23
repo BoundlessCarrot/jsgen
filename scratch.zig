@@ -44,6 +44,7 @@ pub fn main() !void {
 
     // try treeloop(gpa.allocator(), cwd, ".");
     var walker = try cwd.walk(gpa.allocator());
+    defer walker.deinit();
     while (try walker.next()) |entry| {
         std.debug.print("{s}\n", .{entry.path});
     }
